@@ -12,6 +12,8 @@ private:
   struct sockaddr_in serv_addr;
   bool is_initialized;
   bool is_connected;
+  std::string address;
+  int port;
 
 public:
   TCPClient() : sockfd(-1), is_initialized(false), is_connected(false) {
@@ -29,6 +31,8 @@ public:
   }
 
   bool Connect(const std::string &address, int port) {
+    this->address = address;
+    this->port = port;
     if (!is_initialized) {
       std::cerr << "Socket not initialized." << std::endl;
       return false;
@@ -60,6 +64,10 @@ public:
 
     if (send(sockfd, image, size, 0) < 0) {
       std::cerr << "Failed to send image data." << std::endl;
+
+      std::cout << "Perform Auto Reconnetion" << std::endl;
+      Connect(address, port);
+
       return false;
     }
     return true;

@@ -54,4 +54,3 @@ target_link_libraries(${PROJECT_NAME}
     PahoMqttCpp::paho-mqttpp3
     ${ZLIB_LIBRARIES}
 )
-

@@ -11,10 +11,9 @@
 
 #include <mqtt/client.h>
 
-/* #define STB_IMAGE_WRITE_IMPLEMENTATION */
-/* #include "stb_image_write.h" */
-
 #include <chrono>
+#include <parser/json.hpp>
+#include <type_traits>
 #include <zlib.h>
 
 #include "parser/parser.hpp"
@@ -26,7 +25,7 @@
 using namespace std;
 
 const std::string SERVER_ADDRESS = "tcp://localhost:1883";
-const std::string ID = ">>Tester<<";
+const std::string ID = ">>TxCamera<<";
 
 bool protonect_shutdown = false;
 
@@ -34,10 +33,6 @@ mqtt::async_client *client;
 
 void inform(std::string topic);
 void sigint_handler(int s) { protonect_shutdown = true; }
-
-/* void stbiWriteToVector(void *context, void *data, int size); */
-/* std::vector<unsigned char> frameToPNGData(libfreenect2::Frame *frame); */
-/* std::string compressData(const std::vector<unsigned char> &png_data); */
 
 int main() {
   std::cout << "Hello World!" << std::endl;
@@ -69,20 +64,28 @@ int main() {
     std::cout << "Topic: " << msg->get_topic() << std::endl;
     std::cout << "Payload: " << msg->to_string() << std::endl;
 
-    // WARN: No checking on the `/topic`
-    std::string address;
-    int port;
-    std::string pld = msg->to_string();
-    if (!parseAddressIp(pld, address, port)) {
-      std::cerr << "Error parsing address" << std::endl;
-      exit(-1);
-    }
-    std::cout << "Address: " << address << std::endl;
-    std::cout << "Port: " << port << std::endl;
+    std::string topic = msg->get_topic();
+    if (topic == "/ipport") {
+      std::string address;
+      int port;
+      std::string pld = msg->to_string();
+      if (!parseAddressIp(pld, address, port)) {
+        std::cerr << "Error parsing address" << std::endl;
+        exit(-1);
+      }
+      std::cout << "Address: " << address << std::endl;
+      std::cout << "Port: " << port << std::endl;
 
-    if (!tcp.Connect(address, port)) {
-      std::cerr << "Unable to connect to server" << std::endl;
-      exit(-1);
+      if (!tcp.Connect(address, port)) {
+        std::cerr << "Unable to connect to server" << std::endl;
+        exit(-1);
+      }
+    } else if (topic == "/exit") {
+      protonect_shutdown = true;
+    } else if (topic == "/client/WiFi-Tx/TxCamera/start") {
+      // Start Tx Transmissions (Using Bash) --> See Wi-Fi Tx
+    } else if (topic == "/client/WiFi-Tx/TxCamera/stop") {
+      // Stop Tx Transmission Threads
     }
   });
 
@@ -137,6 +140,9 @@ int main() {
   while (!protonect_shutdown) {
     listener.waitForNewFrame(frames);
     libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];
+    // NOTE: The Format is BGRX
+    // Further modifications shall be done before being displayed by
+    // common RGB displayers
 
     if (rgb != nullptr) {
 #ifdef IMAGE_MQTT
@@ -187,55 +193,10 @@ void inform(std::string topic) {
     std::cerr << "MQTT Client is not initialized" << std::endl;
     return;
   }
-  std::cout << "Publishing Online message to " << topic << std::endl;
+  std::cout << "Publishing message to " << topic << std::endl;
   mqtt::message_ptr msg = mqtt::make_message(
-      topic, "{ \"id\": \"camera\", \"type\": \"tx\", \"status\": \"online\"}");
+      topic,
+      "{ \"id\": \"TxCamera\", \"type\": \"tx\", \"status\": \"online\"}");
   msg->set_qos(1);
   client->publish(msg);
 }
-
-/* std::vector<unsigned char> frameToPNGData(libfreenect2::Frame *frame) { */
-/*   std::vector<unsigned char> pngData; */
-/**/
-/*   if (frame == nullptr || frame->data == nullptr) { */
-/*     std::cerr << "Frame is null or contains no data." << std::endl; */
-/*     return pngData; // 返回空vector */
-/*   } */
-/**/
-/*   // 假设frame->data是RGB格式的数据，每个像素3个字节 */
-/*   int width = frame->width; */
-/*   int height = frame->height; */
-/**/
-/*   // 使用stb库函数，将数据写入vector */
-/*   if (!stbi_write_png_to_func(stbiWriteToVector, &pngData, width, height, 3,
- */
-/*                               frame->data, 0)) { */
-/*     std::cerr << "Failed to convert frame to PNG data." << std::endl; */
-/*   } */
-/**/
-/*   return pngData; */
-/* } */
-/**/
-/* void stbiWriteToVector(void *context, void *data, int size) { */
-/*   // 将数据追加到传入的vector中 */
-/*   std::vector<unsigned char> *buffer = */
-/*       reinterpret_cast<std::vector<unsigned char> *>(context); */
-/*   unsigned char *pData = reinterpret_cast<unsigned char *>(data); */
-/*   buffer->insert(buffer->end(), pData, pData + size); */
-/* } */
-/**/
-/* std::string compressData(const std::vector<unsigned char> &png_data) { */
-/*   uLongf compressedSize = compressBound(png_data.size()); */
-/*   std::vector<unsigned char> compressedData(compressedSize); */
-/**/
-/*   int result = compress2(compressedData.data(), &compressedSize, */
-/*                          png_data.data(), png_data.size(),
- * Z_BEST_COMPRESSION); */
-/*   if (result != Z_OK) { */
-/*     std::cerr << "Compression failed" << std::endl; */
-/*     return ""; */
-/*   } */
-/**/
-/*   compressedData.resize(compressedSize); */
-/*   return std::string(compressedData.begin(), compressedData.end()); */
-/* } */
