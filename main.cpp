@@ -12,20 +12,14 @@
 #include <mqtt/client.h>
 
 #include <chrono>
-#include <parser/json.hpp>
-#include <type_traits>
-#include <zlib.h>
 
 #include "parser/parser.hpp"
 #include "tcp/tcp.hpp"
 
-#define TCP_IMAGE
-/* #define MQTT_IMAGE */
-
 using namespace std;
 
 const std::string SERVER_ADDRESS = "tcp://localhost:1883";
-const std::string ID = ">>TxCamera<<";
+const std::string ID = "TxCamera";
 
 bool protonect_shutdown = false;
 
@@ -43,7 +37,6 @@ int main() {
     std::cerr << "Unable to initialize TCP Client" << std::endl;
     return -1;
   }
-
   // ==================== TCP INIT ====================
 
   // ==================== MQTT INIT ====================
@@ -82,9 +75,10 @@ int main() {
       }
     } else if (topic == "/exit") {
       protonect_shutdown = true;
-    } else if (topic == "/client/WiFi-Tx/TxCamera/start") {
+    } else if (topic == "/client/WiFi-Tx/" + ID + "/start") {
+      // TODO: Add Wi-Fi Tx Control
       // Start Tx Transmissions (Using Bash) --> See Wi-Fi Tx
-    } else if (topic == "/client/WiFi-Tx/TxCamera/stop") {
+    } else if (topic == "/client/WiFi-Tx/" + ID + "/stop") {
       // Stop Tx Transmission Threads
     }
   });
@@ -145,18 +139,6 @@ int main() {
     // common RGB displayers
 
     if (rgb != nullptr) {
-#ifdef IMAGE_MQTT
-      try {
-        mqtt::message_ptr pubmsg = mqtt::make_message(
-            "/image", rgb->data, rgb->width * rgb->height * 4);
-        pubmsg->set_qos(0);
-        client->publish(pubmsg);
-        std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      } catch (const mqtt::exception &exc) {
-        cerr << exc.what() << endl;
-        break;
-      }
-#elif defined(TCP_IMAGE)
       try {
         if (!tcp.Put(rgb->data, rgb->width * rgb->height * 4)) {
           std::cerr << "Failed to send image data" << std::endl;
@@ -165,11 +147,10 @@ int main() {
         std::cerr << exc.what() << std::endl;
         break;
       }
-#endif
       fps += 1;
     }
 
-    if (fps > 100) {
+    if (fps > 50) {
       auto now = std::chrono::high_resolution_clock::now();
       double elapsed =
           std::chrono::duration_cast<std::chrono::seconds>(now - last).count();
@@ -196,7 +177,7 @@ void inform(std::string topic) {
   std::cout << "Publishing message to " << topic << std::endl;
   mqtt::message_ptr msg = mqtt::make_message(
       topic,
-      "{ \"id\": \"TxCamera\", \"type\": \"tx\", \"status\": \"online\"}");
+      "{ \"id\": \"" + ID + "\", \"type\": \"tx\", \"status\": \"online\"}");
   msg->set_qos(1);
   client->publish(msg);
 }
