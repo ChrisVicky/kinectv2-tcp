@@ -53,9 +53,9 @@ int main() {
   });
 
   client->set_message_callback([&tcp](mqtt::const_message_ptr msg) {
-    std::cout << "Message arrived" << std::endl;
-    std::cout << "Topic: " << msg->get_topic() << std::endl;
-    std::cout << "Payload: " << msg->to_string() << std::endl;
+    std::cout << "[MQTT] Message arrived" << std::endl;
+    std::cout << "[MQTT] Topic: " << msg->get_topic() << std::endl;
+    std::cout << "[MQTT] Payload: " << msg->to_string() << std::endl;
 
     std::string topic = msg->get_topic();
     if (topic == "/ipport") {
@@ -89,10 +89,11 @@ int main() {
   auto connOpts =
       mqtt::connect_options_builder().will(std::move(lwt)).finalize();
 
+  // Connecting MQTT
   try {
-    std::cout << "Connecting" << std::endl;
+    std::cout << "[MQTT] Connecting (" << SERVER_ADDRESS << ")" << std::endl;
     client->connect(connOpts)->wait();
-    std::cout << "Connected" << std::endl;
+    std::cout << "[MQTT] Connected" << std::endl;
 
     client->subscribe("/ipport", 0);
   } catch (const mqtt::exception &exc) {
@@ -102,7 +103,7 @@ int main() {
   }
   // ==================== MQTT INIT ====================
 
-  // ==================== libfreenect2 ====================
+  // ==================== libfreenect2 INIT ====================
   libfreenect2::Freenect2 freenect2;
   libfreenect2::Freenect2Device *dev = freenect2.openDefaultDevice();
 
@@ -120,8 +121,10 @@ int main() {
   dev->setColorFrameListener(&listener);
   dev->start();
 
-  std::cout << "device serial: " << dev->getSerialNumber() << std::endl;
-  std::cout << "device firmware: " << dev->getFirmwareVersion() << std::endl;
+  std::cout << "[libfreenect2] device serial: " << dev->getSerialNumber()
+            << std::endl;
+  std::cout << "[libfreenect2] device firmware: " << dev->getFirmwareVersion()
+            << std::endl;
 
   // ==================== libfreenect2 ====================
 
@@ -150,7 +153,7 @@ int main() {
       fps += 1;
     }
 
-    if (fps > 50) {
+    if (fps > 100) {
       auto now = std::chrono::high_resolution_clock::now();
       double elapsed =
           std::chrono::duration_cast<std::chrono::seconds>(now - last).count();
@@ -174,7 +177,7 @@ void inform(std::string topic) {
     std::cerr << "MQTT Client is not initialized" << std::endl;
     return;
   }
-  std::cout << "Publishing message to " << topic << std::endl;
+  std::cout << "[MQTT] Publishing message to " << topic << std::endl;
   mqtt::message_ptr msg = mqtt::make_message(
       topic,
       "{ \"id\": \"" + ID + "\", \"type\": \"tx\", \"status\": \"online\"}");
