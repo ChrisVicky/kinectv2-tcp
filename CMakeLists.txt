@@ -32,22 +32,15 @@ set(SOURCE_FILES main.cpp)
 
 
 find_package(freenect2 REQUIRED)
-find_package(PahoMqttCpp REQUIRED)
-find_package(eclipse-paho-mqtt-c REQUIRED)
-find_package(OpenSSL REQUIRED)
+# find_package(OpenSSL REQUIRED)
 
-add_subdirectory(parser)
 add_subdirectory(tcp)
 
 include_directories(${freenect2_INCLUDE_DIR})
-include_directories(${PahoMqttCpp_INCLUDE_DIRS})
-
 
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME}
-    parser
     tcp
     ${freenect2_LIBRARY}
-    PahoMqttCpp::paho-mqttpp3
 )
