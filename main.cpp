@@ -7,6 +7,8 @@
 
 #include <chrono>
 
+#include "signal.h"
+
 #include "tcp/tcp.hpp"
 
 using namespace std;
@@ -23,6 +25,7 @@ void sigint_handler(int s) { protonect_shutdown = true; }
 
 int main() {
   std::cout << "Hello World!" << std::endl;
+  signal(SIGINT, sigint_handler);
 
   // ==================== TCP INIT ====================
   TCPClient tcp;
@@ -30,24 +33,22 @@ int main() {
     std::cerr << "Unable to initialize TCP Client" << std::endl;
     return -1;
   }
-  // ==================== TCP INIT ====================
-
   if (!tcp.Connect(address, port)) {
     std::cerr << "Unable to connect to server" << std::endl;
     exit(-1);
   }
+  std::cout << "[TCP] Connected to " << address << ":" << port << std::endl;
+  // ==================== TCP INIT ====================
+
   // ==================== libfreenect2 INIT ====================
   libfreenect2::Freenect2 freenect2;
   libfreenect2::Freenect2Device *dev = freenect2.openDefaultDevice();
 
   if (dev == nullptr) {
-    std::cout << "failure opening device!" << std::endl;
+    std::cerr << "failure opening device!" << std::endl;
     return -1;
   }
 
-  signal(SIGINT, sigint_handler);
-
-  //! [listeners]
   libfreenect2::SyncMultiFrameListener listener(libfreenect2::Frame::Color);
   libfreenect2::FrameMap frames;
 
@@ -58,7 +59,6 @@ int main() {
             << std::endl;
   std::cout << "[libfreenect2] device firmware: " << dev->getFirmwareVersion()
             << std::endl;
-
   // ==================== libfreenect2 ====================
 
   // ==================== Main Loop ====================
@@ -68,10 +68,11 @@ int main() {
   while (!protonect_shutdown) {
     listener.waitForNewFrame(frames);
     libfreenect2::Frame *rgb = frames[libfreenect2::Frame::Color];
-    // NOTE: The Format is BGRX
+    // NOTE: The Format is BGRX or RGBX
     // Further modifications shall be done before being displayed by
     // common RGB displayers
 
+    // Send the image data to the server
     if (rgb != nullptr) {
       try {
         if (!tcp.Put(rgb->data, rgb->width * rgb->height * 4)) {

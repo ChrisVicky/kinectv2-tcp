@@ -30,6 +30,13 @@ public:
     return true;
   }
 
+  /**
+   * @brief Connect to the server
+   *
+   * @param address   (std::string), e.g. "192.168.0.190"
+   * @param port      (int), port number, e.g. 12345
+   * @return
+   */
   bool Connect(const std::string &address, int port) {
     this->address = address;
     this->port = port;
@@ -56,6 +63,13 @@ public:
     return true;
   }
 
+  /**
+   * @brief Put Image data to the Server via `send(sock, image,size, 0)`
+   *
+   * @param image   (void *), could be any data
+   * @param size    (size_t), size of the data
+   * @return
+   */
   bool Put(const void *image, size_t size) {
     if (!is_connected) {
       std::cout << "TCP Client is not connected to a server." << std::endl;
